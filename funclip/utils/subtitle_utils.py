@@ -19,6 +19,7 @@ def time_convert(ms):
     if len(h) == 1: h = '0' + h
     if len(mi) == 1: mi = '0' + mi
     if len(s) == 1: s = '0' + s
+    if len(tail) == 1: tail = '00' + tail
     return "{}:{}:{},{}".format(h, mi, s, tail)
 
 def str2list(text):
@@ -63,6 +64,10 @@ def generate_srt(sentence_list):
         else:
             srt_total += "{}\n{}".format(i, t2s.srt())
     return srt_total
+
+
+def generate_srt_list(sentence_list):
+    return [Text2SRT(sent['text'], sent['timestamp']) for sent in sentence_list]
 
 def generate_srt_clip(sentence_list, start, end, begin_index=0, time_acc_ost=0.0):
     start, end = int(start * 1000), int(end * 1000)

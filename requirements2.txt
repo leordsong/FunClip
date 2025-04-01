@@ -1,0 +1,24 @@
+funasr
+moviepy
+openai
+
+# VL
+# modelscope
+accelerate
+transformers
+qwen-vl-utils[decord]==0.0.8
+
+# UIs
+PyQt5
+
+# image io
+ffmpeg-python
+numpy
+opencv-python
+
+# jupyternotebook
+matplotlib
+ipywidgets
+
+# logger
+loguru

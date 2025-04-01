@@ -17,7 +17,7 @@ import moviepy.editor as mpy
 from moviepy.video.tools.subtitles import SubtitlesClip, TextClip
 from moviepy.editor import VideoFileClip, concatenate_videoclips
 from moviepy.video.compositing.CompositeVideoClip import CompositeVideoClip
-from utils.subtitle_utils import generate_srt, generate_srt_clip
+from utils.subtitle_utils import generate_srt, generate_srt_clip, generate_srt_list
 from utils.argparse_tools import ArgumentParser, get_commandline_args
 from utils.trans_utils import pre_proc, proc, write_state, load_state, proc_spk, convert_pcm_to_float
 
@@ -67,6 +67,51 @@ class VideoClipper():
                                                     en_post_proc=self.lang=='en',
                                                     cache={})
             res_srt = generate_srt(rec_result[0]['sentence_info'])
+        state['recog_res_raw'] = rec_result[0]['raw_text']
+        state['timestamp'] = rec_result[0]['timestamp']
+        state['sentences'] = rec_result[0]['sentence_info']
+        res_text = rec_result[0]['text']
+        return res_text, res_srt, state
+    
+    def recog2(self, audio_input, sd_switch='no', state=None, hotwords="", output_dir=None):
+        if state is None:
+            state = {}
+        sr, data = audio_input
+
+        # Convert to float64 consistently (includes data type checking)
+        data = convert_pcm_to_float(data)
+
+        # assert sr == 16000, "16kHz sample rate required, {} given.".format(sr)
+        if sr != 16000: # resample with librosa
+            data = librosa.resample(data, orig_sr=sr, target_sr=16000)
+        if len(data.shape) == 2:  # multi-channel wav input
+            logging.warning("Input wav shape: {}, only first channel reserved.".format(data.shape))
+            data = data[:,0]
+        state['audio_input'] = (sr, data)
+        if sd_switch == 'Yes':
+            rec_result = self.funasr_model.generate(data, 
+                                                    return_spk_res=True,
+                                                    return_raw_text=True, 
+                                                    is_final=True,
+                                                    output_dir=output_dir, 
+                                                    hotword=hotwords, 
+                                                    pred_timestamp=self.lang=='en',
+                                                    en_post_proc=self.lang=='en',
+                                                    cache={})
+            res_srt = generate_srt_list(rec_result[0]['sentence_info'])
+            state['sd_sentences'] = rec_result[0]['sentence_info']
+        else:
+            rec_result = self.funasr_model.generate(data, 
+                                                    return_spk_res=False, 
+                                                    sentence_timestamp=True, 
+                                                    return_raw_text=True, 
+                                                    is_final=True, 
+                                                    hotword=hotwords,
+                                                    output_dir=output_dir,
+                                                    pred_timestamp=self.lang=='en',
+                                                    en_post_proc=self.lang=='en',
+                                                    cache={})
+            res_srt = generate_srt_list(rec_result[0]['sentence_info'])
         state['recog_res_raw'] = rec_result[0]['raw_text']
         state['timestamp'] = rec_result[0]['timestamp']
         state['sentences'] = rec_result[0]['sentence_info']
@@ -137,6 +182,38 @@ class VideoClipper():
             message = "No period found in the speech, return raw speech. You may check the recognition result and try other destination text."
             res_audio = data
         return (sr, res_audio), message, clip_srt
+    
+    def video_recog2(self, video_filename, video, sd_switch='no', hotwords="", output_dir=None):
+        
+        # Extract the base name, add '_clip.mp4', and 'wav'
+        if output_dir is not None:
+            os.makedirs(output_dir, exist_ok=True)
+            _, base_name = os.path.split(video_filename)
+            base_name, _ = os.path.splitext(base_name)
+            clip_video_file = base_name + '_clip.mp4'
+            audio_file = base_name + '.wav'
+            audio_file = os.path.join(output_dir, audio_file)
+        else:
+            base_name, _ = os.path.splitext(video_filename)
+            clip_video_file = base_name + '_clip.mp4'
+            audio_file = base_name + '.wav'
+
+        if video.audio is None:
+            logging.error("No audio information found.")
+            sys.exit(1)
+
+        video.audio.write_audiofile(audio_file)
+        wav = librosa.load(audio_file, sr=16000)[0]
+        # delete the audio file after processing
+        if os.path.exists(audio_file):
+            os.remove(audio_file)
+        state = {
+            'video_filename': video_filename,
+            'clip_video_file': clip_video_file,
+            'video': video,
+        }
+        # res_text, res_srt = self.recog((16000, wav), state)
+        return self.recog2((16000, wav), sd_switch, state, hotwords, output_dir) 
 
     def video_recog(self, video_filename, sd_switch='no', hotwords="", output_dir=None):
         video = mpy.VideoFileClip(video_filename)
@@ -281,6 +358,69 @@ class VideoClipper():
             message = "No period found in the audio, return raw speech. You may check the recognition result and try other destination text."
             srt_clip = ''
         return clip_video_file, message, clip_srt
+    
+    def merge(
+        self,
+        video,
+        timestamps,
+        clip_video_file,
+        output_dir
+    ):
+        ts = [[i[0]*16.0/16000, i[1]*16.0/16000] for i in timestamps]
+        clips = []
+        if not ts:
+            raise ValueError(f'No timestamps found in {timestamps}')
+        
+        # clips = [video.subclip(start, end) for start, end in ts]
+        for i, (start, end) in enumerate(ts):
+            clip = video.subclip(start, end)
+            clips.append(clip)
+            self.output_video(clip_video_file, output_dir, f'_{i}', clip)
+        # if len(clips) > 1:
+        #     video_clip = concatenate_videoclips(clips)
+        # else:
+        #     video_clip = clips[0]
+
+        # return video_clip
+
+
+    def split_and_cache(
+        self,
+        state,
+        timestamp_list,
+        output_dir=None,
+    ):
+        video = state['video']
+        clip_video_file = state['clip_video_file']
+
+        ts = [[i[0]*16.0, i[1]*16.0] for i in timestamp_list]
+
+        if len(ts) > 1:
+            clips = []
+            for i, (start, end) in enumerate(ts):
+                start, end = start/16000, end/16000
+                clip = video.subclip(start, end)
+                clips.append(clip)
+                self.output_video(clip_video_file, output_dir, f'_{i}', clip)
+        else:
+            self.output_video(clip_video_file, output_dir, '_0', video)
+        
+    
+    def output_video(self, clip_video_file, output_dir, postfix, video_clip):
+        if output_dir is None:
+            os.makedirs(output_dir, exist_ok=True)
+            _, file_with_extension = os.path.split(clip_video_file)
+            clip_video_file_name, _ = os.path.splitext(file_with_extension)
+            # print(output_dir, clip_video_file)
+            clip_video_file = os.path.join(output_dir, "{}{}.mp4".format(clip_video_file_name, postfix))
+            temp_audio_file = os.path.join(output_dir, "{}_tempaudio{}.mp4".format(clip_video_file_name, postfix))
+        else:
+            clip_video_file = clip_video_file[:-4] + "{}.mp4".format(postfix)
+            temp_audio_file = clip_video_file[:-4] + "_tempaudio{}.mp4".format(postfix)
+        video_clip.write_videofile(clip_video_file, fps=1.0, audio_codec="aac", temp_audiofile=temp_audio_file)
+        logging.info(f"Output video clip: {clip_video_file}")
+
+            
 
 
 def get_parser():
