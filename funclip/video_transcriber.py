@@ -137,17 +137,13 @@ class VideoTranscriber:
     def __init__(self):
         # 初始化路径
         self.bin_dir = get_resource_path("bin")
-        base_model_path = get_resource_path("models/speech_seaco_paraformer_large_asr_nat-zh-cn-16k-common-vocab8404-pytorch")
-        vad_model_path = get_resource_path("models/speech_fsmn_vad_zh-cn-16k-common-pytorch")
-        punc_model_path = get_resource_path("models/punc_ct-transformer_zh-cn-common-vocab272727-pytorch")
-        tables.model_classes[base_model_path] = tables.model_classes.get('paraformer-zh', None)
-        tables.model_classes[vad_model_path] = tables.model_classes.get('fsmn-vad', None)
-        tables.model_classes[punc_model_path] = tables.model_classes.get('ct-punc-c', None)
+
         self.model = AutoModel(
-            model=base_model_path, # Non-ar asr
-            vad_model=vad_model_path, # support any length
-            punc_model=punc_model_path, # split to sentences
-            disable_update=True
+            model="iic/speech_seaco_paraformer_large_asr_nat-zh-cn-16k-common-vocab8404-pytorch", # Non-ar asr
+            vad_model="damo/speech_fsmn_vad_zh-cn-16k-common-pytorch", # support any length
+            punc_model="damo/punc_ct-transformer_zh-cn-common-vocab272727-pytorch", # split to sentences
+            disable_update=True,
+            device='cuda:0'
         )
 
     def get_ffmpeg_path(self, tool_name):
