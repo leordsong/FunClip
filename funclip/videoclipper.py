@@ -12,10 +12,10 @@ import logging
 import argparse
 import numpy as np
 import soundfile as sf
-from moviepy.editor import *
-import moviepy.editor as mpy
+from moviepy import *
+import moviepy as mpy
 from moviepy.video.tools.subtitles import SubtitlesClip, TextClip
-from moviepy.editor import VideoFileClip, concatenate_videoclips
+from moviepy import VideoFileClip, concatenate_videoclips
 from moviepy.video.compositing.CompositeVideoClip import CompositeVideoClip
 from utils.subtitle_utils import generate_srt, generate_srt_clip, generate_srt_list
 from utils.argparse_tools import ArgumentParser, get_commandline_args

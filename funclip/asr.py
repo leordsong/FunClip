@@ -5,50 +5,7 @@ from collections import defaultdict
 from funasr import AutoModel
 import numpy as np
 
-from utils.time_utils import Duration, Timestamp
-
-@dataclass
-class SentenceSRT:
-    text: str
-    _duration: Duration
-    token_timestamps: List[Duration]
-
-    def __str__(self):
-        return f"{self._duration.start} --> {self._duration.end}\n{self.text}"
-    
-    @property
-    def start(self) -> str:
-        return str(self._duration.start)
-    
-    @property
-    def end(self) -> str:
-        return str(self._duration.end)
-    
-    @property
-    def duration(self) -> Timestamp:
-        return self._duration.end - self._duration.start
-    
-    def shift(self, ts:Timestamp, forward=False):
-        if forward:
-            self._duration.start += ts
-            self._duration.end += ts
-            for dura in self.token_timestamps:
-                dura.start += ts
-                dura.end += ts
-        else:
-            self._duration.start -= ts
-            self._duration.end -= ts
-            for dura in self.token_timestamps:
-                dura.start -= ts
-                dura.end -= ts
-    
-    @staticmethod
-    def from_dict(d: dict) -> 'SentenceSRT':
-        return SentenceSRT(
-            d['raw_text'],
-            Duration.from_milliseconds(d['start'], d['end']),
-            [Duration.from_milliseconds(*ts) for ts in d['timestamp']]
-        )
+from utils.time_utils import Duration, Timestamp, SentenceSRT
 
 def asr(audio_binary:np.ndarray, use_main_speaker=True) -> List[SentenceSRT]:
     

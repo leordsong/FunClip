@@ -10,6 +10,7 @@ qwen-vl-utils[decord]==0.0.8
 
 # UIs
 PyQt5
+gradio
 
 # image io
 ffmpeg-python

@@ -1,5 +1,5 @@
-import dashscope
-from dashscope import Generation
+# import dashscope
+# from dashscope import Generation
 
 
 def call_qwen_model(key=None, 

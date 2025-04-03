@@ -63,7 +63,7 @@ def split_by_segments(video:VideoClip, text_clips:List[SentenceSRT], preds:List[
         new_srts = []
         for srt in text_clips[before:pred+1]:
             new_srt = copy.deepcopy(srt)
-            new_srt.shift(start_time)
+            new_srt.move_forward(start_time)
             new_srts.append(new_srt)
         clips.append((copy.copy(subvideo), new_srts))
         before = pred + 1

@@ -47,24 +47,6 @@ def build_single_round_messages(user_prompt, system_prompt=None, base64_image=No
     if base64_image is not None:
         messages.append({'role': 'user', 'content': [
             {
-<<<<<<< Updated upstream
-                "role": "user",
-                "content": demo_prompt,
-            }
-        ],
-        model="gpt-3.5-turbo-0125",
-    )
-    print(chat_completion.choices[0].message.content)
-    
-    
-def openai_call(apikey, 
-                model="gpt-3.5-turbo", 
-                user_content="如何做西红柿炖牛腩？", 
-                system_content=None):
-    client = OpenAI(
-        # This is the default and can be omitted
-        api_key=apikey,
-=======
                 "type": "image_url",
                 "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}, # base 64 image string
             },
@@ -87,7 +69,6 @@ def openai_call(
         # This is the default and can be omitted
         api_key=apikey,
         base_url=_MODELS[model]
->>>>>>> Stashed changes
     )
     messages = build_single_round_messages(user_content, system_content, image)
     

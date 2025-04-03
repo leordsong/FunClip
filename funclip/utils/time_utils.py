@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import re
+from typing import List
 
 @dataclass
 class Timestamp:
@@ -51,3 +52,69 @@ class Duration:
     def from_milliseconds(start_ms: int, end_ms: int):
         assert start_ms < end_ms
         return Duration(Timestamp.from_milliseconds(start_ms), Timestamp.from_milliseconds(end_ms))
+
+
+@dataclass
+class SentenceSRT:
+    text: str
+    _duration: Duration
+    token_timestamps: List[Duration]
+
+    def __str__(self):
+        return f"{self._duration.start} --> {self._duration.end}\n{self.text}"
+    
+    @property
+    def start(self) -> str:
+        return str(self._duration.start)
+    
+    @property
+    def end(self) -> str:
+        return str(self._duration.end)
+    
+    @property
+    def duration(self) -> Timestamp:
+        return self._duration.end - self._duration.start
+    
+    def move_forward(self, ts:Timestamp):
+        self._duration.start += ts
+        self._duration.end += ts
+        for dura in self.token_timestamps:
+            dura.start += ts
+            dura.end += ts
+
+    def move_backward(self, ts:Timestamp):
+        self._duration.start -= ts
+        self._duration.end -= ts
+        for dura in self.token_timestamps:
+            dura.start -= ts
+            dura.end -= ts
+    
+    def shift(self, ts:Timestamp, forward=False):
+        if forward:
+            self._duration.start += ts
+            self._duration.end += ts
+            for dura in self.token_timestamps:
+                dura.start += ts
+                dura.end += ts
+        else:
+            self._duration.start -= ts
+            self._duration.end -= ts
+            for dura in self.token_timestamps:
+                dura.start -= ts
+                dura.end -= ts
+    
+    @staticmethod
+    def from_dict(d: dict) -> 'SentenceSRT':
+        return SentenceSRT(
+            d['raw_text'],
+            Duration.from_milliseconds(d['start'], d['end']),
+            [Duration.from_milliseconds(*ts) for ts in d['timestamp']]
+        )
+    
+    def to_dict(self) -> dict:
+        return {
+            'raw_text': self.text,
+            'start': self.start,
+            'end': self.end,
+            'timestamp': [(ts.start.to_milliseconds(), ts.end.to_milliseconds()) for ts in self.token_timestamps]
+        }

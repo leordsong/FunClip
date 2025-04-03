@@ -7,3 +7,6 @@ ClipVideo/clipvideo/output
 outputs/
 logs
 inputs/
+
+funclip/models
+funclip/bin

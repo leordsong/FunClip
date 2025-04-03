@@ -1,4 +1,4 @@
-from g4f.client import Client
+# from g4f.client import Client
 
 if __name__ == '__main__':
     from llm.demo_prompt import demo_prompt
