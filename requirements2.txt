@@ -12,7 +12,7 @@ qwen-vl-utils[decord]==0.0.8
 PyQt5
 gradio
 
-# image io
+# image/audio/vidoe io
 ffmpeg-python
 numpy
 opencv-python

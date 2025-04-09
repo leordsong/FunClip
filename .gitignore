@@ -8,5 +8,7 @@ outputs/
 logs
 inputs/
 
+funclip/deprecated
 funclip/models
-funclip/bin
+funclip/pretrained_models
+funclip/test.ipynb

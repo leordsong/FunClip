@@ -4,6 +4,7 @@ import copy
 import base64
 from io import BytesIO
 from PIL import Image
+import tempfile, librosa
 
 import numpy as np
 from moviepy import VideoFileClip, VideoClip, AudioClip
@@ -39,13 +40,18 @@ def get_video(vidoe_path) -> VideoFileClip:
 def get_audio_binary(clip: VideoClip, sr=16_000) -> np.ndarray:
     # audio: AudioClip = clip.audio
     # return audio.to_soundarray(fps=16000)
-    import tempfile, librosa
     with tempfile.TemporaryDirectory() as temp_dir:
         file_path = join(temp_dir, "audio.wav")
         audio:AudioClip = clip.audio
         audio.write_audiofile(file_path)
         wav, _ = librosa.load(file_path, sr=sr)
     return wav
+
+def write_audio(audio, temp_path:str) -> str:
+    with tempfile.TemporaryDirectory(dir=temp_path, delete=False) as temp_dir:
+        file_path = join(temp_path, "audio.wav")
+        audio.write_audiofile(file_path)
+    return file_path
 
 def split_by_segments(video:VideoClip, text_clips:List[SentenceSRT], preds:List[int]) -> List[Tuple[VideoClip, List[SentenceSRT]]]:
 

@@ -1,5 +1,5 @@
-import os
-import logging
+import requests
+
 from openai import OpenAI
 
 from logger import logger
@@ -62,7 +62,8 @@ def openai_call(
     user_content,
     system_content=None,
     is_json=False,
-    image=None
+    image=None,
+    temperature=0.0,
 ):
     assert model in _MODELS, f"Model {model} not supported."
     client = OpenAI(
@@ -78,10 +79,11 @@ def openai_call(
         response_format={
             'type': 'json_object'
         } if is_json else None,
+        temperature=temperature,
     )
     
     output = chat_completion.choices[0].message.content
-    logging.info("Openai model inference done.")
+    logger.info("Openai model inference done.")
     return output
 
 def openai_call_reasoning(
@@ -91,6 +93,7 @@ def openai_call_reasoning(
     system_content=None,
     image=None,
     include_usage=False,
+    temperature=0.5,
 ):
     assert model in _MODELS, f"Model {model} not supported."
     assert model in _REASONING_MODELS, f"Reasoning {model} not supported."
@@ -108,8 +111,23 @@ def openai_call_reasoning(
         stream_options={
             "include_usage": True
         } if include_usage else None,
+        temperature=temperature,
     )
     
     output, reasoning = reasoning_streaming_decode(chat_completion, include_usage=True)
-    logging.info("Openai model inference done.")
+    logger.info("Openai model inference done.")
     return output, reasoning
+
+
+def deepseek_call_balance(apikey):
+    url = 'https://api.deepseek.com/user/balance'
+    # get balance from url
+    headers = {'Authorization': f'Bearer {apikey}'}
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        output = response.json()
+        return output['balance_infos'][0]['total_balance']
+    else:
+        logger.error(f"Failed to fetch balance: {response.status_code}, {response.text}")
+        return None
